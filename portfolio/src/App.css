@@ -1,0 +1,90 @@
+/* Make sure fonts are loaded */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Montserrat:wght@300;400;700&display=swap');
+
+:root {
+  --neon-blue: #36f9f6;
+  --neon-pink: #ff00ff;
+  --neon-purple: #b026ff;
+  --black: #000000;
+  --synthwave-bg: linear-gradient(to bottom, #0d0221, #260d54, #661982);
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Montserrat', sans-serif;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  overflow: hidden;
+}
+
+.intro-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.skip-intro-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+  border-radius: 5px;
+  padding: 8px 16px;
+  font-family: 'Orbitron', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.skip-intro-button:hover {
+  background-color: var(--neon-blue);
+  color: var(--black);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes neonGlow {
+  0% { text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue); }
+  50% { text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue), 0 0 30px var(--neon-blue); }
+  100% { text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue); }
+}
+
+.hidden {
+  display: none;
+}
+
+.fadeIn {
+  animation: fadeIn 1s forwards;
+}
+
+.fadeOut {
+  animation: fadeOut 1s forwards;
+}
+
+/* Canvas Styles */
+.threejs-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}

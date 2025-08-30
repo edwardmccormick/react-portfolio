@@ -1,0 +1,455 @@
+/* Import fonts first */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=VT323&display=swap');
+
+:root {
+  --neon-blue: #36f9f6;
+  --neon-pink: #ff00ff;
+  --neon-purple: #b026ff;
+  --neon-red: #ff3333;
+  --neon-orange: #ff6600;
+  --neon-yellow: #ffff00;
+  --black: #000000;
+  --dark-purple: #0d0221;
+}
+
+.intro-sequence {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(0deg, var(--dark-purple) 0%, #260d54 70%, #661982 100%);
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* Synthwave sun - pure CSS */
+.css-sun {
+  position: absolute;
+  width: 300px;
+  height: 150px;
+  bottom: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, #fffa86 0%, #ff5f6d 40%, #ff2d95 100%);
+  border-radius: 150px 150px 0 0;
+  filter: blur(10px);
+  z-index: 2;
+  opacity: 0.8;
+  box-shadow: 
+    0 0 40px #ff5f6d,
+    0 0 80px #ff2d95,
+    0 0 120px #ff00ff;
+}
+
+/* Lines on the horizon */
+.horizon-line {
+  position: absolute;
+  bottom: 40%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--neon-pink);
+  box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+  z-index: 3;
+}
+
+.intro-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(0deg, rgba(13,2,33,0.3) 0%, rgba(86,24,128,0.2) 50%, rgba(0,0,0,0.3) 100%);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.loading-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  width: 300px;
+  background-color: rgba(0,0,0,0.7);
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--neon-blue);
+  box-shadow: 0 0 10px var(--neon-blue), 0 0 20px rgba(54, 249, 246, 0.3);
+}
+
+.loading-text {
+  color: var(--neon-blue);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  margin-bottom: 16px;
+  text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue);
+  animation: neonPulse 1.5s infinite alternate;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(54, 249, 246, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-progress {
+  height: 100%;
+  width: 30%;
+  background: var(--neon-blue);
+  border-radius: 2px;
+  animation: loadingProgress 2s infinite;
+  box-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+}
+
+/* Improved grid lines animation */
+.grid-lines {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60vh;
+  background-image: 
+    linear-gradient(to bottom, transparent 98%, var(--neon-blue) 100%),
+    linear-gradient(to right, transparent 98%, var(--neon-blue) 100%);
+  background-size: 40px 40px;
+  transform: perspective(400px) rotateX(60deg);
+  transform-origin: bottom;
+  z-index: 2; /* Lower z-index to prevent conflict with Three.js grid */
+  opacity: 0.3; /* Reduced opacity */
+  animation: gridMove 8s linear infinite;
+  box-shadow: 0 0 20px var(--neon-blue);
+  display: none; /* Hide CSS grid to avoid conflict with Three.js grid */
+}
+
+/* Additional horizontal lines */
+.horizon-grid {
+  position: absolute;
+  bottom: 40%;
+  left: -10%;
+  width: 120%;
+  height: 40vh;
+  background-image: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--neon-blue) 10%, 
+    var(--neon-blue) 90%, 
+    transparent 100%
+  );
+  background-size: 100% 40px;
+  background-repeat: repeat-y;
+  opacity: 0.3;
+  z-index: 4;
+}
+
+/* Moving stars in background */
+.stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  background-image: 
+    radial-gradient(1px 1px at 25px 5px, white 100%, transparent),
+    radial-gradient(1px 1px at 50px 25px, white 100%, transparent),
+    radial-gradient(1px 1px at 125px 20px, white 100%, transparent),
+    radial-gradient(1.5px 1.5px at 50px 75px, white 100%, transparent),
+    radial-gradient(2px 2px at 175px 15px, white 100%, transparent),
+    radial-gradient(2px 2px at 20px 125px, white 100%, transparent),
+    radial-gradient(2px 2px at 100px 100px, white 100%, transparent);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: twinkle 3s ease-in-out infinite alternate;
+  z-index: 1;
+}
+
+/* Text appearing at certain animation stages */
+.animation-text {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  color: var(--neon-pink);
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink);
+  text-transform: uppercase;
+  opacity: 0;
+  z-index: 30;
+  animation: textFadeIn 1s forwards;
+}
+
+.explosion-text {
+  top: 40%;
+  font-size: 4rem;
+  color: var(--neon-red);
+  text-shadow: 0 0 10px var(--neon-red), 0 0 20px var(--neon-orange);
+}
+
+/* CSS bomb effect */
+.css-bomb {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background-color: #000;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+  z-index: 25;
+  animation: bombDrop 3s ease-in forwards;
+}
+
+/* Bomb animation */
+@keyframes bombDrop {
+  0% {
+    top: 20%;
+  }
+  80% {
+    top: 60%;
+    opacity: 1;
+  }
+  100% {
+    top: 60%;
+    opacity: 0;
+  }
+}
+
+/* CSS explosion effect */
+.css-explosion {
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, white 0%, var(--neon-orange) 40%, var(--neon-red) 60%, transparent 100%);
+  box-shadow: 0 0 80px var(--neon-orange), 0 0 120px var(--neon-red);
+  opacity: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.css-explosion.active {
+  animation: cssExplode 2s forwards;
+}
+
+/* Debug panel styling */
+.debug-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 15px;
+  border-radius: 5px;
+  z-index: 1000;
+  width: 300px;
+  border: 1px solid #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.debug-panel h4 {
+  margin: 0 0 10px 0;
+  color: #00ffff;
+  border-bottom: 1px solid #00ffff;
+  padding-bottom: 5px;
+  font-size: 18px;
+}
+
+.debug-panel p {
+  margin: 5px 0;
+  display: flex;
+  justify-content: space-between;
+  line-height: 1.4;
+}
+
+.debug-panel .status {
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.debug-panel .true {
+  color: #00ff00;
+}
+
+.debug-panel .false {
+  color: #ff6666;
+}
+
+.debug-panel .progress-bar {
+  height: 8px;
+  background-color: #333;
+  margin-top: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.debug-panel .progress-fill {
+  height: 100%;
+  background-color: #00ff00;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+/* Skip intro button */
+.skip-intro-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.skip-intro-button:hover {
+  background-color: var(--neon-blue);
+  color: var(--black);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px var(--neon-blue);
+}
+
+/* Force complete button for debugging */
+.force-complete-button {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: var(--neon-red);
+  border: 1px solid var(--neon-red);
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  text-transform: uppercase;
+}
+
+.force-complete-button:hover {
+  background-color: var(--neon-red);
+  color: var(--black);
+}
+
+/* Animation keyframes */
+@keyframes gridMove {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 40px;
+  }
+}
+
+@keyframes loadingProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(300%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes cssExplode {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    width: 300px;
+    height: 300px;
+    opacity: 1;
+  }
+  100% {
+    width: 1000px;
+    height: 1000px;
+    opacity: 0;
+  }
+}
+
+@keyframes textFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes neonPulse {
+  0% {
+    text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue);
+  }
+  100% {
+    text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue), 0 0 30px var(--neon-blue);
+  }
+}
+
+@keyframes twinkle {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Canvas positioning */
+.threejs-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 15 !important; /* Increased z-index to ensure it's above CSS elements */
+  pointer-events: auto !important;
+}
+
+/* WebGL error message */
+.webgl-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid var(--neon-red);
+  border-radius: 5px;
+  padding: 20px;
+  color: white;
+  z-index: 1001;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 45, 149, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 45, 149, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 45, 149, 0); }
+}
