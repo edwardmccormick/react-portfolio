@@ -384,36 +384,104 @@
   }
 }
 
-/* Audio interaction prompt */
+/* Audio interaction prompt - much more prominent */
 .audio-prompt {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0, 0.8);
-  border: 2px solid var(--neon-orange);
-  border-radius: 10px;
-  padding: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: audioPromptPulse 1.5s infinite;
+}
+
+.audio-prompt h2 {
+  color: var(--neon-pink);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 3rem;
+  margin: 0 0 20px 0;
+  text-shadow: 0 0 20px var(--neon-pink);
+  text-transform: uppercase;
+  letter-spacing: 3px;
   text-align: center;
-  z-index: 1001;
-  animation: audioPromptPulse 2s infinite;
 }
 
 .audio-prompt p {
-  color: var(--neon-orange);
+  color: var(--neon-blue);
   font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
-  margin: 0 0 15px 0;
-  text-shadow: 0 0 5px var(--neon-orange);
+  font-size: 1.5rem;
+  margin: 0 0 30px 0;
+  text-shadow: 0 0 10px var(--neon-blue);
+  text-align: center;
+}
+
+.audio-prompt .play-audio-button {
+  position: static;
+  background-color: rgba(255, 0, 255, 0.2);
+  color: var(--neon-pink);
+  border: 3px solid var(--neon-pink);
+  border-radius: 15px;
+  padding: 20px 40px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: buttonGlow 2s infinite;
+}
+
+.audio-prompt .play-audio-button:hover {
+  background-color: var(--neon-pink);
+  color: var(--black);
+  transform: scale(1.1);
+  box-shadow: 0 0 30px var(--neon-pink);
 }
 
 @keyframes audioPromptPulse {
   0%, 100% {
-    box-shadow: 0 0 10px var(--neon-orange);
+    background-color: rgba(0, 0, 0, 0.9);
   }
   50% {
-    box-shadow: 0 0 25px var(--neon-orange), 0 0 35px var(--neon-orange);
+    background-color: rgba(13, 2, 33, 0.95);
   }
+}
+
+@keyframes buttonGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--neon-pink);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--neon-pink), 0 0 60px var(--neon-pink);
+  }
+}
+
+/* Skip intro button in start screen */
+.skip-intro-button-alt {
+  background-color: transparent;
+  color: var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 20px;
+}
+
+.skip-intro-button-alt:hover {
+  background-color: var(--neon-blue);
+  color: var(--black);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px var(--neon-blue);
 }
 
 /* Animation keyframes */

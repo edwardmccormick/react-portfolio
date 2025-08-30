@@ -40,6 +40,8 @@ const ContextLossHandler = ({ onContextLoss, onContextRestore }) => {
 interface IntroSequenceProps {
   onComplete: () => void
   onSkip: () => void
+  audioLoaded: boolean
+  onStartAudio: () => boolean
 }
 
 // Helper function for conditional logging
@@ -49,16 +51,14 @@ const log = (message: string, force = false) => {
   }
 };
 
-const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
+const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroSequenceProps) => {
   log('Component initialized');
-  const [audioLoaded, setAudioLoaded] = useState(false)
   const [sceneReady, setSceneReady] = useState(false)
   const [playingIntro, setPlayingIntro] = useState(false)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
   const [animationStage, setAnimationStage] = useState('initializing')
   const [showDebug, setShowDebug] = useState(false) // Set to true to show debug panel
   const [webglContextLost, setWebglContextLost] = useState(false)
-  const soundRef = useRef<Howl | null>(null)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
   
   // Reset all state values on component mount
@@ -66,17 +66,11 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
     log('Component mounted, resetting state values');
     
     // Clean up any previous instances to prevent memory leaks
-    if (soundRef.current) {
-      soundRef.current.stop();
-      soundRef.current.unload();
-    }
-    
     if (timelineRef.current) {
       timelineRef.current.kill();
     }
     
     // Reset state
-    setAudioLoaded(false);
     setSceneReady(false);
     setPlayingIntro(false);
     setLoadingTimeout(false);
@@ -84,11 +78,6 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
     
     return () => {
       log('Component unmounting, cleaning up resources');
-      if (soundRef.current) {
-        soundRef.current.stop();
-        soundRef.current.unload();
-      }
-      
       if (timelineRef.current) {
         timelineRef.current.kill();
       }
@@ -98,135 +87,14 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
     }
   }, [])
   
-  // Set up the audio with multiple fallbacks
+  // Update animation stage based on audio loading
   useEffect(() => {
-    log('Audio setup effect running');
-    setAnimationStage('loading audio');
-    
-    // Don't try to reload if we already have a sound reference
-    if (soundRef.current) {
-      log('Audio already initialized, skipping setup');
-      return;
+    if (audioLoaded) {
+      setAnimationStage('audio loaded');
+    } else {
+      setAnimationStage('loading audio');
     }
-    
-    // Array of potential audio sources to try
-    const audioSources = [
-      '/audio/blinding-lights.mp3',  // Primary audio
-      '/assets/audio/blinding-lights.mp3',  // Alternate location
-      '/public/audio/blinding-lights.mp3',  // Another possible location
-      'https://raw.githubusercontent.com/user/repo/main/assets/audio/blinding-lights.mp3' // Remote fallback (update with real URL if available)
-    ];
-    
-    // Keep track of which source we're trying
-    let currentSourceIndex = 0;
-    
-    // Function to try loading an audio source
-    const tryLoadAudio = (sourceIndex: number) => {
-      if (sourceIndex >= audioSources.length) {
-        // We've tried all sources, force loaded state
-        log('All audio sources failed, forcing loaded state', true);
-        setAudioLoaded(true);
-        setAnimationStage('all audio sources failed');
-        return;
-      }
-      
-      const source = audioSources[sourceIndex];
-      log(`Trying audio source: ${source}`);
-      
-      // First, test if the file is accessible
-      const testAudio = new Audio();
-      testAudio.preload = 'metadata';
-      testAudio.oncanplay = () => {
-        log(`File ${source} is accessible, proceeding with Howler.js`, true);
-        loadWithHowler(source, sourceIndex);
-      };
-      testAudio.onerror = () => {
-        log(`File ${source} not accessible, trying next source`, true);
-        tryLoadAudio(sourceIndex + 1);
-      };
-      testAudio.src = source;
-    };
-    
-    // Function to load with Howler.js after file accessibility is confirmed
-    const loadWithHowler = (source: string, sourceIndex: number) => {
-      try {
-        // Create audio object with better error handling
-        soundRef.current = new Howl({
-          src: [source],
-          volume: 0.7,
-          preload: true,
-          html5: false, // Try Web Audio API first
-          format: ['mp3'], // Explicitly specify format
-          onload: () => {
-            log(`Audio successfully loaded from ${source}`, true);
-            setAudioLoaded(true);
-            setAnimationStage('audio loaded');
-          },
-          onloaderror: (id, error) => {
-            log(`Audio failed to load from ${source}: ${error}`, true);
-            log('Trying next source...', true);
-            
-            // Clean up the failed Howl instance
-            if (soundRef.current) {
-              soundRef.current.unload();
-              soundRef.current = null;
-            }
-            
-            // Try the next source
-            tryLoadAudio(sourceIndex + 1);
-          },
-          onplayerror: (id, error) => {
-            log(`Audio play error: ${error}`, true);
-          },
-          onend: () => {
-            log('Audio playback ended');
-            setAnimationStage('audio playback complete');
-          }
-        });
-        
-        // Add a small delay to check if loading started
-        setTimeout(() => {
-          if (soundRef.current && soundRef.current.state() === 'loading') {
-            log(`Audio is loading from ${source}...`, true);
-          }
-        }, 100);
-      } catch (error) {
-        log(`Error initializing audio: ${error}`, true);
-        
-        // Clean up on error
-        if (soundRef.current) {
-          soundRef.current.unload();
-          soundRef.current = null;
-        }
-        
-        // Try the next source
-        tryLoadAudio(sourceIndex + 1);
-      }
-    };
-    
-    // Start trying audio sources
-    tryLoadAudio(currentSourceIndex);
-    
-    // Add a direct timeout as final fallback
-    const timeout = setTimeout(() => {
-      if (!audioLoaded) {
-        log('Global audio timeout reached, forcing loaded state', true);
-        log(`Current sound ref state: ${soundRef.current ? 'exists' : 'null'}`, true);
-        if (soundRef.current) {
-          log(`Sound state: ${soundRef.current.state()}`, true);
-        }
-        setAudioLoaded(true);
-        setAnimationStage('audio global timeout');
-      }
-    }, 8000); // Increased to 8 seconds
-    
-    return () => {
-      clearTimeout(timeout);
-      if (soundRef.current) {
-        soundRef.current.unload();
-      }
-    };
-  }, [])
+  }, [audioLoaded])
   
   // Set a timeout for scene loading (separate from audio loading timeout)
   useEffect(() => {
@@ -261,21 +129,13 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
     const fadeOutTimeline = gsap.timeline({
       onComplete: () => {
         log('Final animation timeline complete');
-        if (soundRef.current) {
-          try {
-            log('Fading out audio');
-            soundRef.current.fade(0.7, 0, 1000)
-          } catch (error) {
-            log(`Error fading audio: ${error}`, true);
-          }
-        }
         log('Triggering onComplete callback to transition to portfolio', true);
         setAnimationStage('transitioning to portfolio');
         
         // Small delay to ensure all animations complete properly
         setTimeout(() => {
           onComplete();
-        }, 500);
+        }, 50);
       }
     })
     
@@ -298,40 +158,8 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
       setAnimationStage('waiting for scene');
     }
     
-    // Only start the animation if all conditions are met and it hasn't started yet
-    if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntro) {
-      log('All conditions met, starting intro animation sequence', true);
-      setAnimationStage('starting animation');
-      setPlayingIntro(true);
-      
-      // Start playing the audio if available
-      if (soundRef.current) {
-        log('Audio object exists, attempting to play');
-        try {
-          // Make sure audio is at the beginning
-          soundRef.current.seek(0);
-          
-          // Howler.js play() doesn't return a promise, but we can check if it played
-          const playId = soundRef.current.play();
-          
-          if (playId) {
-            log('Audio playback started', true);
-            setAnimationStage('animation with audio');
-          } else {
-            log('Audio autoplay blocked by browser', true);
-            setAnimationStage('animation without audio - autoplay blocked');
-          }
-        } catch (error) {
-          log(`Error playing audio: ${error}`, true);
-          log('Continuing with animation despite audio error');
-          setAnimationStage('animation without audio');
-        }
-      } else {
-        setAnimationStage('animation without audio object');
-      }
-      
-
-    }
+    // Animation now starts only when user clicks the start button
+    // This logic is moved to the button click handler
   }, [audioLoaded, sceneReady, playingIntro, loadingTimeout, handleExplosionComplete])
 
   // Memoize the scene loaded handler to avoid recreation on each render
@@ -349,31 +177,37 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
         log('Debug panel toggled', true);
       }
       
-      // Try to play audio on any keypress if it's loaded but not playing
-      if (soundRef.current && audioLoaded && !playingIntro && animationStage.includes('autoplay blocked')) {
-        try {
-          const playId = soundRef.current.play();
-          if (playId) {
-            log('Audio started after user interaction (keypress)', true);
-            setAnimationStage('animation with audio');
-          }
-        } catch (error) {
-          log(`Error playing audio after keypress: ${error}`, true);
+      // Start experience on any keypress when ready
+      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntro) {
+        log('User pressed key to start experience', true);
+        setPlayingIntro(true);
+        setAnimationStage('starting animation');
+        
+        // Start audio using App's audio manager
+        const audioStarted = onStartAudio();
+        if (audioStarted) {
+          log('Audio started with keypress', true);
+          setAnimationStage('animation with audio');
+        } else {
+          setAnimationStage('animation without audio');
         }
       }
     };
     
     const handleClick = () => {
-      // Try to play audio on any click if it's loaded but not playing
-      if (soundRef.current && audioLoaded && animationStage.includes('autoplay blocked')) {
-        try {
-          const playId = soundRef.current.play();
-          if (playId) {
-            log('Audio started after user interaction (click)', true);
-            setAnimationStage('animation with audio');
-          }
-        } catch (error) {
-          log(`Error playing audio after click: ${error}`, true);
+      // Start experience on any click when ready
+      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntro) {
+        log('User clicked to start experience', true);
+        setPlayingIntro(true);
+        setAnimationStage('starting animation');
+        
+        // Start audio using App's audio manager
+        const audioStarted = onStartAudio();
+        if (audioStarted) {
+          log('Audio started with click', true);
+          setAnimationStage('animation with audio');
+        } else {
+          setAnimationStage('animation without audio');
         }
       }
     };
@@ -476,7 +310,7 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
           onSceneLoaded={handleSceneLoaded} 
           onExplosionComplete={handleExplosionComplete}
           isPlaying={playingIntro}
-          howl={soundRef.current}
+          howl={null}
         />
       </Canvas>
       
@@ -502,29 +336,36 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
         Skip Intro
       </button>
       
-      {/* Audio interaction prompt - shown when autoplay is blocked */}
-      {animationStage.includes('autoplay blocked') && (
+      {/* Start experience prompt - shown when ready */}
+      {(audioLoaded || loadingTimeout) && sceneReady && !playingIntro && (
         <div className="audio-prompt">
-          <p>🔊 Click anywhere or press any key to enable audio</p>
+          <h2>🌅 Meet Ted McCormick 🌅</h2>
+          <p>Click to begin your journey through the digital horizon</p>
           <button 
             className="play-audio-button" 
             onClick={() => {
-              if (soundRef.current) {
-                try {
-                  const playId = soundRef.current.play();
-                  if (playId) {
-                    log('Audio started via button click', true);
-                    setAnimationStage('animation with audio');
-                  } else {
-                    log('Audio still blocked after button click', true);
-                  }
-                } catch (error) {
-                  log(`Error playing audio after button click: ${error}`, true);
-                }
+              log('User clicked to start experience', true);
+              setPlayingIntro(true);
+              setAnimationStage('starting animation');
+              
+              // Start audio using App's audio manager
+              const audioStarted = onStartAudio();
+              if (audioStarted) {
+                log('Audio started with user interaction', true);
+                setAnimationStage('animation with audio');
+              } else {
+                log('Audio blocked or unavailable, continuing without', true);
+                setAnimationStage('animation without audio');
               }
             }}
           >
-            🔊 Enable Audio
+            🚀 Let's. GO!!!!
+          </button>
+          <button 
+            className="skip-intro-button-alt" 
+            onClick={onSkip}
+          >
+            Skip Intro
           </button>
         </div>
       )}
