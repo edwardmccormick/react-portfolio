@@ -348,6 +348,74 @@
   color: var(--black);
 }
 
+/* Play audio button */
+.play-audio-button {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: var(--neon-orange);
+  border: 1px solid var(--neon-orange);
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  animation: audioButtonPulse 2s infinite;
+}
+
+.play-audio-button:hover {
+  background-color: var(--neon-orange);
+  color: var(--black);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px var(--neon-orange);
+}
+
+@keyframes audioButtonPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--neon-orange);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--neon-orange), 0 0 30px var(--neon-orange);
+  }
+}
+
+/* Audio interaction prompt */
+.audio-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 2px solid var(--neon-orange);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  z-index: 1001;
+  animation: audioPromptPulse 2s infinite;
+}
+
+.audio-prompt p {
+  color: var(--neon-orange);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  margin: 0 0 15px 0;
+  text-shadow: 0 0 5px var(--neon-orange);
+}
+
+@keyframes audioPromptPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--neon-orange);
+  }
+  50% {
+    box-shadow: 0 0 25px var(--neon-orange), 0 0 35px var(--neon-orange);
+  }
+}
+
 /* Animation keyframes */
 @keyframes gridMove {
   0% {

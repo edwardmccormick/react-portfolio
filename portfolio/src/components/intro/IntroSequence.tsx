@@ -133,37 +133,71 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
       const source = audioSources[sourceIndex];
       log(`Trying audio source: ${source}`);
       
+      // First, test if the file is accessible
+      const testAudio = new Audio();
+      testAudio.preload = 'metadata';
+      testAudio.oncanplay = () => {
+        log(`File ${source} is accessible, proceeding with Howler.js`, true);
+        loadWithHowler(source, sourceIndex);
+      };
+      testAudio.onerror = () => {
+        log(`File ${source} not accessible, trying next source`, true);
+        tryLoadAudio(sourceIndex + 1);
+      };
+      testAudio.src = source;
+    };
+    
+    // Function to load with Howler.js after file accessibility is confirmed
+    const loadWithHowler = (source: string, sourceIndex: number) => {
       try {
         // Create audio object with better error handling
         soundRef.current = new Howl({
           src: [source],
           volume: 0.7,
           preload: true,
-          html5: true, // Use HTML5 Audio to reduce loading issues
+          html5: false, // Try Web Audio API first
+          format: ['mp3'], // Explicitly specify format
           onload: () => {
             log(`Audio successfully loaded from ${source}`, true);
             setAudioLoaded(true);
             setAnimationStage('audio loaded');
           },
-          onloaderror: () => {
-            log(`Audio failed to load from ${source}, trying next source`, true);
+          onloaderror: (id, error) => {
+            log(`Audio failed to load from ${source}: ${error}`, true);
+            log('Trying next source...', true);
             
             // Clean up the failed Howl instance
             if (soundRef.current) {
               soundRef.current.unload();
+              soundRef.current = null;
             }
             
             // Try the next source
             tryLoadAudio(sourceIndex + 1);
           },
+          onplayerror: (id, error) => {
+            log(`Audio play error: ${error}`, true);
+          },
           onend: () => {
-            // Handle audio ending if needed
             log('Audio playback ended');
             setAnimationStage('audio playback complete');
           }
         });
+        
+        // Add a small delay to check if loading started
+        setTimeout(() => {
+          if (soundRef.current && soundRef.current.state() === 'loading') {
+            log(`Audio is loading from ${source}...`, true);
+          }
+        }, 100);
       } catch (error) {
         log(`Error initializing audio: ${error}`, true);
+        
+        // Clean up on error
+        if (soundRef.current) {
+          soundRef.current.unload();
+          soundRef.current = null;
+        }
         
         // Try the next source
         tryLoadAudio(sourceIndex + 1);
@@ -177,10 +211,14 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
     const timeout = setTimeout(() => {
       if (!audioLoaded) {
         log('Global audio timeout reached, forcing loaded state', true);
+        log(`Current sound ref state: ${soundRef.current ? 'exists' : 'null'}`, true);
+        if (soundRef.current) {
+          log(`Sound state: ${soundRef.current.state()}`, true);
+        }
         setAudioLoaded(true);
         setAnimationStage('audio global timeout');
       }
-    }, 5000);
+    }, 8000); // Increased to 8 seconds
     
     return () => {
       clearTimeout(timeout);
@@ -272,9 +310,17 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
         try {
           // Make sure audio is at the beginning
           soundRef.current.seek(0);
-          soundRef.current.play();
-          log('Audio playback started', true);
-          setAnimationStage('animation with audio');
+          
+          // Howler.js play() doesn't return a promise, but we can check if it played
+          const playId = soundRef.current.play();
+          
+          if (playId) {
+            log('Audio playback started', true);
+            setAnimationStage('animation with audio');
+          } else {
+            log('Audio autoplay blocked by browser', true);
+            setAnimationStage('animation without audio - autoplay blocked');
+          }
         } catch (error) {
           log(`Error playing audio: ${error}`, true);
           log('Continuing with animation despite audio error');
@@ -284,23 +330,7 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
         setAnimationStage('animation without audio object');
       }
       
-      // Create a timeline for the CSS animations
-      const cssTimeline = gsap.timeline();
-      
-      // Store timeline reference for cleanup
-      timelineRef.current = cssTimeline;
-      
-      // Wait 3 seconds before triggering the explosion
-      cssTimeline.to({}, { duration: 3, onComplete: () => {
-        log('Setting explosion started state', true);
-        setAnimationStage('explosion started');
-        
-        // Wait for explosion animation to complete
-        gsap.delayedCall(2, () => {
-          log('CSS explosion animation complete', true);
-          handleExplosionComplete();
-        });
-      }});
+
     }
   }, [audioLoaded, sceneReady, playingIntro, loadingTimeout, handleExplosionComplete])
 
@@ -318,10 +348,42 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
         setShowDebug(prev => !prev);
         log('Debug panel toggled', true);
       }
+      
+      // Try to play audio on any keypress if it's loaded but not playing
+      if (soundRef.current && audioLoaded && !playingIntro && animationStage.includes('autoplay blocked')) {
+        try {
+          const playId = soundRef.current.play();
+          if (playId) {
+            log('Audio started after user interaction (keypress)', true);
+            setAnimationStage('animation with audio');
+          }
+        } catch (error) {
+          log(`Error playing audio after keypress: ${error}`, true);
+        }
+      }
+    };
+    
+    const handleClick = () => {
+      // Try to play audio on any click if it's loaded but not playing
+      if (soundRef.current && audioLoaded && animationStage.includes('autoplay blocked')) {
+        try {
+          const playId = soundRef.current.play();
+          if (playId) {
+            log('Audio started after user interaction (click)', true);
+            setAnimationStage('animation with audio');
+          }
+        } catch (error) {
+          log(`Error playing audio after click: ${error}`, true);
+        }
+      }
     };
     
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener('click', handleClick);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('click', handleClick);
+    };
   }, []);
 
   return (
@@ -439,6 +501,33 @@ const IntroSequence = ({ onComplete, onSkip }: IntroSequenceProps) => {
       <button className="skip-intro-button" onClick={onSkip}>
         Skip Intro
       </button>
+      
+      {/* Audio interaction prompt - shown when autoplay is blocked */}
+      {animationStage.includes('autoplay blocked') && (
+        <div className="audio-prompt">
+          <p>🔊 Click anywhere or press any key to enable audio</p>
+          <button 
+            className="play-audio-button" 
+            onClick={() => {
+              if (soundRef.current) {
+                try {
+                  const playId = soundRef.current.play();
+                  if (playId) {
+                    log('Audio started via button click', true);
+                    setAnimationStage('animation with audio');
+                  } else {
+                    log('Audio still blocked after button click', true);
+                  }
+                } catch (error) {
+                  log(`Error playing audio after button click: ${error}`, true);
+                }
+              }
+            }}
+          >
+            🔊 Enable Audio
+          </button>
+        </div>
+      )}
       
       {/* Force complete button for debugging */}
       {showDebug && (

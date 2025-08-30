@@ -198,7 +198,7 @@ const IntroScene = ({
             // Update speed uniform based on current speed
             material.uniforms.speed.value = gridMotion.speed;
             
-            log(`Updating grid motion: time=${gridMotion.uvOffset.toFixed(2)}, speed=${gridMotion.speed.toFixed(2)}`, true);
+            // log(`Updating grid motion: time=${gridMotion.uvOffset.toFixed(2)}, speed=${gridMotion.speed.toFixed(2)}`, true);
           }
         }
         
