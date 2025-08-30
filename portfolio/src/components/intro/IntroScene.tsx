@@ -49,6 +49,7 @@ const IntroScene = ({
   // References to our 3D objects
   const gridRef = useRef<THREE.Mesh>(null)
   const sunRef = useRef<THREE.Group>(null)
+  const mountainRef = useRef<THREE.Mesh>(null)
   const explosionRef = useRef<THREE.Mesh>(null)
   
   // Animation state
@@ -138,8 +139,8 @@ const IntroScene = ({
       gridMotion.speed = 0.5;
       gridMotion.uvOffset = 0;
       
-      // Set sun expansion timing (about 10 seconds in)
-      const gridApproachDuration = 10.0; // seconds
+      // Set sun expansion timing (about 5 seconds in)
+      const gridApproachDuration = 15.0; // seconds
       explosionTime.current = gridApproachDuration;
       
       // Initialize explosion/sun expansion effect
@@ -160,8 +161,8 @@ const IntroScene = ({
   
   // Grid motion animation references
   const gridMotionRef = useRef({
-    speed: 1.0,         // DOUBLED starting speed (was 0.5)
-    acceleration: 0.5, // DOUBLED acceleration (was 0.01)
+    speed: 0.0,         // DOUBLED starting speed (was 0.5)
+    acceleration: 0.33, // DOUBLED acceleration (was 0.01)
     maxSpeed: 5.0,      // DOUBLED max speed (was 1.5)
     uvOffset: 0
   });
@@ -198,46 +199,73 @@ const IntroScene = ({
             // Update speed uniform based on current speed
             material.uniforms.speed.value = gridMotion.speed;
             
-            log(`Updating grid motion: time=${gridMotion.uvOffset.toFixed(2)}, speed=${gridMotion.speed.toFixed(2)}`, true);
+            // log(`Updating grid motion: time=${gridMotion.uvOffset.toFixed(2)}, speed=${gridMotion.speed.toFixed(2)}`, true);
           }
+        }
+        
+        // Slowly move mountains and sun closer and larger (1/100th the speed of grid)
+        const slowMotion = gridMotion.uvOffset * 0.03;
+        
+        // Move and scale mountains
+        if (mountainRef.current) {
+          mountainRef.current.position.z = -30 + slowMotion * 10; // Move closer slowly
+          const mountainScale = 1 + slowMotion * 0.15; // Grow slowly
+          mountainRef.current.scale.set(mountainScale, mountainScale, mountainScale);
+        }
+        
+        // Move and scale sun
+        if (sunRef.current) {
+          sunRef.current.position.z = -50 + slowMotion * 8; // Move closer slowly
+          const sunScale = 1 + slowMotion * 0.18; // Grow slightly faster than mountains
+          sunRef.current.scale.set(sunScale, sunScale, sunScale);
         }
         
         // Check if it's time to start sun expansion
         if (animationTime.current >= explosionTime.current) {
-          setAnimStage(AnimationStage.SUN_EXPANSION);
-          log('Animation stage: SUN_EXPANSION', true);
-        }
+            log('Animation complete', true);
+            animationComplete.current = true;
+            onExplosionComplete();
+          }
         
         break;
       }
       
       case AnimationStage.SUN_EXPANSION: {
-        // Handle sun expansion animation
-        if (explosionRef.current) {
-          const explosionElapsed = animationTime.current - explosionTime.current;
-          
-          // Show explosion if it just started
-          if (!explosionRef.current.visible) {
-            explosionRef.current.visible = true;
-            log('Sun expansion started', true);
-          }
-          
-          // Scale up sun over time
-          if (explosionElapsed < 2.0) {
-            const scale = 1.0 + explosionElapsed * 10; // Grow to size 20x over 2 seconds
-            explosionRef.current.scale.set(scale, scale, scale);
-            
-            // Move sun closer to viewer
-            explosionRef.current.position.z += delta * 10;
-          }
-          
-          // Check if explosion is complete
-          if (explosionElapsed > 2.0 && !animationComplete.current) {
-            log('Animation complete', true);
-            animationComplete.current = true;
-            onExplosionComplete();
-          }
+
+          // Call completion immediately when entering this stage, but only once
+        if (!animationComplete.current) {
+          log('Animation complete', true);
+          animationComplete.current = true;
+          onExplosionComplete();
         }
+        // // Handle sun expansion animation
+        // if (explosionRef.current) {
+        //   const explosionElapsed = animationTime.current - explosionTime.current;
+          
+        //   // Show explosion if it just started
+        //   if (!explosionRef.current.visible) {
+        //     explosionRef.current.visible = true;
+        //     log('Sun expansion started', true);
+        //   }
+          
+        //   // Scale up sun over time
+        //   if (explosionElapsed < 1.5) {
+        //     const scale = 1.0 + explosionElapsed * 20; // Grow to size 20x over 1 second
+        //     explosionRef.current.scale.set(scale, scale, scale);
+            
+        //     // Move sun closer to viewer
+        //     explosionRef.current.position.z += delta * 10;
+        //     // onExplosionComplete();
+            
+        //   }
+          
+        //   // Check if explosion is complete
+        //   if (explosionElapsed > 1.5 && !animationComplete.current) {
+        //     log('Animation complete', true);
+        //     animationComplete.current = true;
+        //     onExplosionComplete();
+        //   }
+        // }
         break;
       }
       
@@ -262,9 +290,9 @@ const IntroScene = ({
     const gridMatRef = useRef<THREE.ShaderMaterial>(null);
     
     // Log when grid is mounted
-    useEffect(() => {
-      log('RetroGrid mounted', true);
-    }, []);
+    // useEffect(() => {
+    //   log('RetroGrid mounted', true);
+    // }, []);
     
     // Custom shader for the retro grid
     const gridShader = {
@@ -425,39 +453,52 @@ const IntroScene = ({
     );
   };
   
-  // Mountain silhouette component
+  // Mountain silhouette component - craggy valley formation
   const MountainSilhouette = () => {
-    // Create mountain shape using shape and extrude geometry
-    const createMountainShape = () => {
+    // Create mountain shape with craggy valley in center
+    const createCraggyValleyShape = () => {
       const shape = new THREE.Shape();
       
-      // Start at the left edge
-      shape.moveTo(-60, -5);
+      // Start at far left edge - extended viewport
+      shape.moveTo(-100, -5);
       
-      // Create smoother mountains like in reference
-      // Left side mountains
-      shape.bezierCurveTo(-55, -2, -50, 4, -45, 2);
-      shape.bezierCurveTo(-40, 0, -38, 6, -35, 4);
-      shape.bezierCurveTo(-32, 2, -30, 8, -25, 6);
-      shape.bezierCurveTo(-20, 4, -15, 2, -10, 3);
+      // Far left mountains - craggy and uneven
+      shape.bezierCurveTo(-95, -2, -90, 4, -85, 2);
+      shape.bezierCurveTo(-80, 0, -78, 6, -75, 4);
+      shape.bezierCurveTo(-72, 2, -70, 8, -65, 6);
+      shape.bezierCurveTo(-60, 4, -55, 2, -50, 3);
       
-      // Center mountains
-      shape.bezierCurveTo(-5, 4, -2, 10, 0, 12); // Tallest peak
-      shape.bezierCurveTo(2, 10, 5, 8, 8, 10);
-      shape.bezierCurveTo(10, 12, 15, 8, 18, 6);
+      // Left side rising towards valley - more peaks
+      shape.bezierCurveTo(-45, 5, -42, 10, -38, 8);
+      shape.bezierCurveTo(-35, 6, -32, 12, -28, 10);
+      shape.bezierCurveTo(-25, 8, -22, 14, -18, 12);
       
-      // Right side mountains
-      shape.bezierCurveTo(22, 4, 25, 7, 30, 5);
-      shape.bezierCurveTo(35, 3, 40, 6, 45, 4);
-      shape.bezierCurveTo(50, 2, 55, 0, 60, -5);
+      // Valley descent - craggy approach to sun
+      shape.bezierCurveTo(-15, 10, -12, 6, -8, 4);
+      shape.bezierCurveTo(-5, 2, -2, 3, 0, 1); // Valley floor where sun sits
+      
+      // Valley ascent - mirror the descent with variations
+      shape.bezierCurveTo(2, 3, 5, 2, 8, 4);
+      shape.bezierCurveTo(12, 6, 15, 10, 18, 12);
+      
+      // Right side peaks - craggy mirror of left
+      shape.bezierCurveTo(22, 14, 25, 8, 28, 10);
+      shape.bezierCurveTo(32, 12, 35, 6, 38, 8);
+      shape.bezierCurveTo(42, 10, 45, 5, 50, 3);
+      
+      // Far right mountains - extended and craggy
+      shape.bezierCurveTo(55, 2, 60, 4, 65, 6);
+      shape.bezierCurveTo(70, 8, 72, 2, 75, 4);
+      shape.bezierCurveTo(78, 6, 80, 0, 85, 2);
+      shape.bezierCurveTo(90, 4, 95, -2, 100, -5);
       
       // Close the shape
-      shape.lineTo(-60, -5);
+      shape.lineTo(-100, -5);
       
       return shape;
     };
     
-    const mountainShape = createMountainShape();
+    const mountainShape = createCraggyValleyShape();
     const extrudeSettings = {
       steps: 1,
       depth: 0.5,
@@ -465,12 +506,12 @@ const IntroScene = ({
     };
     
     return (
-      <mesh position={[0, -2, -30]} rotation={[0, 0, 0]}>
+      <mesh ref={mountainRef} position={[0, -2, -30]} rotation={[0, 0, 0]}>
         <extrudeGeometry args={[mountainShape, extrudeSettings]} />
         <meshStandardMaterial 
           color="#3a1f5d" 
           emissive="#2a1f5d"
-          metalness={0.2}
+          metalness={0.1}
           roughness={0.8}
         />
       </mesh>
@@ -513,7 +554,7 @@ const IntroScene = ({
       <RetroGrid />
       <SynthwaveSun />
       <MountainSilhouette />
-      {/* No debug elements needed */}
+      <Explosion />
       
       {/* Lighting */}
       <ambientLight intensity={0.8} />
