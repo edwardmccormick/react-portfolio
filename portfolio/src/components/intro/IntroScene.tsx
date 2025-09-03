@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Howl } from 'howler'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
 
 // Create DEBUG flag for controlling verbose logging
 const DEBUG = false; // Set to false for production
@@ -51,6 +52,8 @@ const IntroScene = ({
   const sunRef = useRef<THREE.Group>(null)
   const mountainRef = useRef<THREE.Mesh>(null)
   const explosionRef = useRef<THREE.Mesh>(null)
+  const f14Ref = useRef<THREE.Group>(null)
+  const corvetteRef = useRef<THREE.Group>(null)
   
   // Animation state
   const [animStage, setAnimStage] = useState<AnimationStageType>(AnimationStage.WAITING)
@@ -61,6 +64,18 @@ const IntroScene = ({
   const animationTime = useRef(0)
   const explosionTime = useRef(0)
   const animationComplete = useRef(false)
+  
+  // F-14 animation state
+  const f14Motion = useRef({
+    phase: 'FLY_IN' as 'FLY_IN' | 'FORMATION' | 'OVERTAKE',
+    startTime: 0
+  })
+  
+  // Corvette animation state
+  const corvetteMotion = useRef({
+    phase: 'SPEEDING' as 'SPEEDING' | 'STEERING',
+    startTime: 0
+  })
   
   // Immediately indicate scene is loaded
   useEffect(() => {
@@ -152,6 +167,24 @@ const IntroScene = ({
         explosionRef.current.visible = true;
       }
       
+      // Initialize F-14 animation
+      if (f14Ref.current) {
+        log('Initializing F-14 fly-in animation', true);
+        f14Ref.current.position.set(20, 2, -10);
+        f14Ref.current.rotation.set(0, -Math.PI / 4, 0);
+        f14Motion.current.phase = 'FLY_IN';
+        f14Motion.current.startTime = 0;
+      }
+      
+      // Initialize Corvette animation
+      if (corvetteRef.current) {
+        log('Initializing Corvette animation', true);
+        corvetteRef.current.position.set(0, -2, 5); // On the grid surface
+        corvetteRef.current.rotation.set(0, 0, 0);
+        corvetteMotion.current.phase = 'SPEEDING';
+        corvetteMotion.current.startTime = 0;
+      }
+      
       // Make sure all animations start from the beginning
       animationComplete.current = false;
       
@@ -218,6 +251,136 @@ const IntroScene = ({
           sunRef.current.position.z = -50 + slowMotion * 8; // Move closer slowly
           const sunScale = 1 + slowMotion * 0.18; // Grow slightly faster than mountains
           sunRef.current.scale.set(sunScale, sunScale, sunScale);
+        }
+        
+        // Animate F-14 Tomcat
+        if (f14Ref.current) {
+          const time = animationTime.current;
+          const f14 = f14Ref.current;
+          
+          // Phase 1: Fly-in with barrel roll (0-5s)
+          if (time < 5.0) {
+            const t = time / 5.0;
+            f14.position.set(
+              20 * (1 - t), // Right to center
+              2 + Math.sin(t * Math.PI * 4) * 3, // Barrel roll
+              -10 - t * 5
+            );
+            f14.rotation.z = t * Math.PI * 4; // Roll rotation
+            f14.rotation.y = -Math.PI / 4 + t * Math.PI / 4; // Turn toward camera
+            f14Motion.current.phase = 'FLY_IN';
+          }
+          
+          // Phase 1.5: Smooth transition to formation (5-6s)
+          else if (time >= 5.0 && time < 6.0) {
+            const t = (time - 5.0) / 1.0; // 1 second transition
+            const eased = easeInOut(t);
+            
+            // Smooth transition from barrel roll end to formation position
+            const startX = 0; // Where barrel roll ended
+            const startY = 2;
+            const startZ = -15;
+            
+            f14.position.set(
+              startX + (-8 - startX) * eased, // Smooth to left side
+              startY + (1 - startY) * eased,   // Smooth to formation height
+              startZ + gridMotion.uvOffset * 0.8 * eased // Start following grid
+            );
+            
+            // Smooth rotation transition
+            f14.rotation.z = 0; // Stop rolling
+            f14.rotation.y = 0; // Face forward
+            f14Motion.current.phase = 'TRANSITION';
+          }
+          
+          // Phase 2: Formation flight (6-12s)
+          else if (time >= 6.0 && time < 12.0) {
+            f14.position.set(-8, 1, -15 + gridMotion.uvOffset * 0.8); // Fly alongside
+            f14Motion.current.phase = 'FORMATION';
+          }
+          
+          // Phase 3: Camera overtakes with banking (12-15s)
+          else if (time >= 12.0) {
+            if (f14Motion.current.phase !== 'OVERTAKE') {
+              f14Motion.current.phase = 'OVERTAKE';
+              f14Motion.current.startTime = time; // Record overtake start time
+            }
+            
+            const overtakeTime = time - f14Motion.current.startTime;
+            
+            // Banking maneuvers during overtake
+            let bankAngle = 0;
+            if (overtakeTime < 1.0) {
+              // Bank right for first second
+              bankAngle = Math.sin(overtakeTime * Math.PI) * 0.3; // 0.3 radians max
+            } else if (overtakeTime < 2.0) {
+              // Bank left for second second
+              bankAngle = -Math.sin((overtakeTime - 1.0) * Math.PI) * 0.4; // Slightly more left bank
+            }
+            
+            f14.rotation.z = bankAngle;
+            f14.position.z += gridMotion.speed * 0.5 * delta; // F-14 falls behind
+            f14.position.y -= delta * 2; // Descends below camera
+          }
+        }
+        
+        // Animate Corvette
+        if (corvetteRef.current) {
+          const time = animationTime.current;
+          const corvette = corvetteRef.current;
+          
+          // Phase 1: Speed out from under camera (0-3s)
+          if (time < 3.0) {
+            const t = time / 3.0;
+            corvette.position.set(
+              0, // Stay centered
+              -2, // On the grid surface
+              5 - t * 25 // Speed forward
+            );
+            corvetteMotion.current.phase = 'SPEEDING';
+          }
+          
+          // Phase 2: Steering left and right as camera catches up (3-12s)
+          else if (time >= 3.0 && time < 12.0) {
+            if (corvetteMotion.current.phase !== 'STEERING') {
+              corvetteMotion.current.phase = 'STEERING';
+              corvetteMotion.current.startTime = time;
+            }
+            
+            const steerTime = time - corvetteMotion.current.startTime;
+            
+            // Steering pattern: left, right, left
+            let steerX = 0;
+            let steerAngle = 0;
+            
+            if (steerTime < 3.0) {
+              // Steer left
+              steerX = -Math.sin(steerTime * Math.PI / 3) * 4;
+              steerAngle = -Math.sin(steerTime * Math.PI / 3) * 0.3;
+            } else if (steerTime < 6.0) {
+              // Steer right
+              const t = steerTime - 3.0;
+              steerX = Math.sin(t * Math.PI / 3) * 5;
+              steerAngle = Math.sin(t * Math.PI / 3) * 0.4;
+            } else {
+              // Steer left again
+              const t = steerTime - 6.0;
+              steerX = -Math.sin(t * Math.PI / 3) * 3;
+              steerAngle = -Math.sin(t * Math.PI / 3) * 0.25;
+            }
+            
+            corvette.position.set(
+              steerX,
+              -2, // On the grid surface
+              -20 + gridMotion.uvOffset * 0.6 // Move with grid but slower
+            );
+            corvette.rotation.y = steerAngle;
+          }
+          
+          // Phase 3: Camera overtakes (12s+)
+          else {
+            corvette.position.z += gridMotion.speed * 0.3 * delta; // Falls behind slower than F-14
+          }
         }
         
         // Check if it's time to start sun expansion
@@ -518,6 +681,80 @@ const IntroScene = ({
     );
   };
   
+  // F-14 Tomcat component
+  const F14Tomcat = () => {
+    try {
+      const { scene } = useGLTF('/models/f14_tomcat_lowpoly.glb');
+      
+      // Fix transparency on model load
+      useEffect(() => {
+        if (scene) {
+          scene.traverse((child: any) => {
+            if (child.isMesh && child.material) {
+              child.material.transparent = false;
+              child.material.opacity = 1;
+            }
+          });
+        }
+      }, [scene]);
+      
+      return (
+        <primitive 
+          ref={f14Ref} 
+          object={scene} 
+          scale={[0.5, 0.5, 0.5]} 
+          position={[20, 2, -10]}
+        />
+      );
+    } catch (error) {
+      log('F-14 model failed to load, using placeholder', true);
+      // Fallback placeholder
+      return (
+        <mesh ref={f14Ref} position={[20, 2, -10]} scale={[0.5, 0.5, 0.5]}>
+          <boxGeometry args={[2, 0.5, 4]} />
+          <meshStandardMaterial color="#666666" />
+        </mesh>
+      );
+    }
+  };
+  
+  // Corvette component
+  const Corvette = () => {
+    try {
+      const { scene } = useGLTF('/models/corvette__low_poly.glb');
+      
+      // Fix transparency on model load
+      useEffect(() => {
+        if (scene) {
+          scene.traverse((child: any) => {
+            if (child.isMesh && child.material) {
+              child.material.transparent = false;
+              child.material.opacity = 1;
+            }
+          });
+        }
+      }, [scene]);
+      
+      return (
+        <primitive 
+          ref={corvetteRef} 
+          object={scene} 
+          scale={[0.8, 0.8, 0.8]} 
+          position={[0, -2, 5]}
+        />
+      );
+    } catch (error) {
+      log('Corvette model failed to load, using placeholder', true);
+      // Fallback placeholder
+      return (
+        <mesh ref={corvetteRef} position={[0, -2, 5]} scale={[0.8, 0.8, 0.8]}>
+          <boxGeometry args={[1.5, 0.6, 3]} />
+          <meshStandardMaterial color="#ff0066" />
+        </mesh>
+      );
+    }
+  };
+  
   // Explosion component for sun expansion
   const Explosion = () => {
     return (
@@ -554,6 +791,8 @@ const IntroScene = ({
       <RetroGrid />
       <SynthwaveSun />
       <MountainSilhouette />
+      <F14Tomcat />
+      <Corvette />
       <Explosion />
       
       {/* Lighting */}
