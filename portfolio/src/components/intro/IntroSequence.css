@@ -12,6 +12,11 @@
   --dark-purple: #0d0221;
 }
 
+body.intro-cursor-hidden .intro-sequence,
+body.intro-cursor-hidden .intro-sequence * {
+  cursor: none !important;
+}
+
 .intro-sequence {
   position: relative;
   width: 100%;

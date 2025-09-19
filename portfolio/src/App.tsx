@@ -12,6 +12,8 @@ function App() {
   // Use a stable key that only changes on page refresh, not on re-renders
   const [introKey] = useState(`intro-${Date.now()}`)
   const soundRef = useRef<Howl | null>(null)
+  const fadeTimeoutRef = useRef<number | null>(null)
+  const stopTimeoutRef = useRef<number | null>(null)
   
   // Initialize audio on app load
   useEffect(() => {
@@ -37,32 +39,59 @@ function App() {
         setAudioLoaded(true);
       }
     };
-    
+
     loadAudio();
-    
+
     return () => {
       if (soundRef.current) {
         soundRef.current.unload();
       }
     };
   }, [])
+  
+  const clearPendingAudioTimers = () => {
+    if (fadeTimeoutRef.current) {
+      window.clearTimeout(fadeTimeoutRef.current)
+      fadeTimeoutRef.current = null
+    }
+    if (stopTimeoutRef.current) {
+      window.clearTimeout(stopTimeoutRef.current)
+      stopTimeoutRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      clearPendingAudioTimers()
+    }
+  }, [])
 
   const handleIntroComplete = () => {
     console.log('App: Intro complete callback triggered')
     setIntroComplete(true)
-    
+
     // Continue audio at half volume for 20 seconds
     if (soundRef.current) {
       try {
         console.log('[App] Reducing audio volume for portfolio background');
-        soundRef.current.fade(0.7, 0.35, 1000);
-        
-        setTimeout(() => {
+        soundRef.current.fade(0.7, 0.35, 600);
+
+        clearPendingAudioTimers()
+
+        fadeTimeoutRef.current = window.setTimeout(() => {
           if (soundRef.current) {
-            console.log('[App] Fading out background music after 20 seconds');
-            soundRef.current.fade(0.35, 0, 3000);
+            const currentVolume = soundRef.current.volume()
+            console.log('[App] Fading out background music after post-intro playback');
+            soundRef.current.fade(currentVolume, 0, 3000)
           }
-        }, 20000);
+        }, 60000)
+
+        stopTimeoutRef.current = window.setTimeout(() => {
+          if (soundRef.current) {
+            console.log('[App] Stopping audio playback after fade');
+            soundRef.current.stop()
+          }
+        }, 63500)
       } catch (error) {
         console.log(`[App] Error managing audio: ${error}`);
       }
@@ -77,6 +106,7 @@ function App() {
     if (soundRef.current) {
       soundRef.current.stop();
     }
+    clearPendingAudioTimers()
   }
   
   const startAudio = () => {
@@ -96,7 +126,26 @@ function App() {
 
   // Determine if we should show the portfolio content
   const showPortfolio = skipIntro || introComplete
-  
+
+  // Lock scroll during intro and re-enable for the portfolio view
+  useEffect(() => {
+    const className = 'intro-active'
+    const htmlElement = document.documentElement
+
+    if (!showPortfolio) {
+      document.body.classList.add(className)
+      htmlElement.classList.add(className)
+    } else {
+      document.body.classList.remove(className)
+      htmlElement.classList.remove(className)
+    }
+
+    return () => {
+      document.body.classList.remove(className)
+      htmlElement.classList.remove(className)
+    }
+  }, [showPortfolio])
+
   return (
     <div id="top">
       <Navbar visible={showPortfolio} />

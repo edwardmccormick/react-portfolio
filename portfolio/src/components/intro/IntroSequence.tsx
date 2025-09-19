@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import gsap from 'gsap'
-import { Howl } from 'howler'
 import { useThree } from '@react-three/fiber'
 import IntroScene from './IntroScene'
 import './IntroSequence.css'
@@ -10,7 +9,12 @@ import './IntroSequence.css'
 const DEBUG = false;
 
 // Component to handle WebGL context loss at the Canvas level
-const ContextLossHandler = ({ onContextLoss, onContextRestore }) => {
+interface ContextLossHandlerProps {
+  onContextLoss?: () => void
+  onContextRestore?: () => void
+}
+
+const ContextLossHandler = ({ onContextLoss, onContextRestore }: ContextLossHandlerProps) => {
   const { gl } = useThree();
   
   useEffect(() => {
@@ -60,32 +64,53 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
   const [showDebug, setShowDebug] = useState(false) // Set to true to show debug panel
   const [webglContextLost, setWebglContextLost] = useState(false)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
+  const playingIntroRef = useRef(false)
+
+  const startExperience = useCallback(() => {
+    if (playingIntroRef.current) {
+      return
+    }
+
+    playingIntroRef.current = true
+    setPlayingIntro(true)
+    setAnimationStage('starting animation')
+
+    const audioStarted = onStartAudio()
+    if (audioStarted) {
+      log('Audio started with user interaction', true)
+      setAnimationStage('animation with audio')
+    } else {
+      setAnimationStage('animation without audio')
+    }
+  }, [onStartAudio])
   
   // Reset all state values on component mount
   useEffect(() => {
     log('Component mounted, resetting state values');
-    
-    // Clean up any previous instances to prevent memory leaks
+
     if (timelineRef.current) {
-      timelineRef.current.kill();
+      timelineRef.current.kill()
     }
-    
-    // Reset state
-    setSceneReady(false);
-    setPlayingIntro(false);
-    setLoadingTimeout(false);
-    setAnimationStage('initializing');
-    
+
+    setSceneReady(false)
+    setPlayingIntro(false)
+    setLoadingTimeout(false)
+    setAnimationStage('initializing')
+    playingIntroRef.current = false
+
     return () => {
       log('Component unmounting, cleaning up resources');
       if (timelineRef.current) {
-        timelineRef.current.kill();
+        timelineRef.current.kill()
       }
-      
-      // Clear any pending GSAP animations
-      gsap.killTweensOf({});
+      gsap.killTweensOf({})
+      document.body.classList.remove('intro-cursor-hidden')
     }
   }, [])
+
+  useEffect(() => {
+    playingIntroRef.current = playingIntro
+  }, [playingIntro])
   
   // Update animation stage based on audio loading
   useEffect(() => {
@@ -122,20 +147,21 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
 
   // Memoize the explosion handler to avoid recreation on each render
   const handleExplosionComplete = useCallback(() => {
-    log('Explosion animation complete, transitioning to portfolio', true);
-    setAnimationStage('explosion complete');
+    log('Sun bloom finale reached, transitioning to portfolio', true)
+    setAnimationStage('sun bloom finale')
     
     // Fade out and trigger the onComplete callback
     const fadeOutTimeline = gsap.timeline({
       onComplete: () => {
         log('Final animation timeline complete');
-        log('Triggering onComplete callback to transition to portfolio', true);
-        setAnimationStage('transitioning to portfolio');
-        
+        log('Triggering onComplete callback to transition to portfolio', true)
+        setAnimationStage('sun bloom complete')
+
         // Small delay to ensure all animations complete properly
         setTimeout(() => {
-          onComplete();
-        }, 50);
+          setAnimationStage('transitioning to portfolio')
+          onComplete()
+        }, 50)
       }
     })
     
@@ -144,8 +170,8 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
     
     fadeOutTimeline.to('.intro-overlay', {
       opacity: 0,
-      duration: 1.5
-    });
+      duration: 1.2
+    })
   }, [onComplete]);
 
   // Start the intro sequence once everything is loaded
@@ -173,55 +199,52 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'd') {
-        setShowDebug(prev => !prev);
-        log('Debug panel toggled', true);
+        setShowDebug(prev => !prev)
+        log('Debug panel toggled', true)
+        return
       }
-      
-      // Start experience on any keypress when ready
-      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntro) {
-        log('User pressed key to start experience', true);
-        setPlayingIntro(true);
-        setAnimationStage('starting animation');
-        
-        // Start audio using App's audio manager
-        const audioStarted = onStartAudio();
-        if (audioStarted) {
-          log('Audio started with keypress', true);
-          setAnimationStage('animation with audio');
-        } else {
-          setAnimationStage('animation without audio');
-        }
+
+      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntroRef.current) {
+        log('User pressed key to start experience', true)
+        startExperience()
       }
-    };
-    
+    }
+
     const handleClick = () => {
-      // Start experience on any click when ready
-      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntro) {
-        log('User clicked to start experience', true);
-        setPlayingIntro(true);
-        setAnimationStage('starting animation');
-        
-        // Start audio using App's audio manager
-        const audioStarted = onStartAudio();
-        if (audioStarted) {
-          log('Audio started with click', true);
-          setAnimationStage('animation with audio');
-        } else {
-          setAnimationStage('animation without audio');
-        }
+      if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntroRef.current) {
+        log('User clicked to start experience', true)
+        startExperience()
       }
-    };
-    
-    window.addEventListener('keydown', handleKeyPress);
-    window.addEventListener('click', handleClick);
+    }
+
+    if ((audioLoaded || loadingTimeout) && sceneReady && !playingIntroRef.current) {
+      window.addEventListener('keydown', handleKeyPress)
+      window.addEventListener('click', handleClick)
+    }
+
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      window.removeEventListener('click', handleClick);
-    };
-  }, []);
+      window.removeEventListener('keydown', handleKeyPress)
+      window.removeEventListener('click', handleClick)
+    }
+  }, [audioLoaded, loadingTimeout, sceneReady, startExperience])
+
+  useEffect(() => {
+    const className = 'intro-cursor-hidden'
+    const shouldHide = playingIntro && animationStage !== 'transitioning to portfolio'
+
+    if (shouldHide) {
+      document.body.classList.add(className)
+    } else {
+      document.body.classList.remove(className)
+    }
+
+    return () => {
+      document.body.classList.remove(className)
+    }
+  }, [animationStage, playingIntro])
 
   return (
-    <div className="intro-sequence">
+    <div className={`intro-sequence ${playingIntro ? 'playing' : ''}`}>
       <div className="intro-overlay"></div>
       <div className="grid-lines"></div>
       <div className="css-sun"></div>
@@ -247,16 +270,16 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
                 <div 
                   className="progress-fill" 
                   style={{ 
-                    width: animationStage === 'explosion started' ? '75%' : 
-                           animationStage === 'explosion complete' ? '100%' : '50%' 
+                    width: animationStage.includes('sun bloom') ? '100%' : 
+                           animationStage.includes('animation') ? '70%' : '40%'
                   }}
                 ></div>
               </div>
               <p>Step: {
                 animationStage === 'starting animation' ? 'Initializing' :
-                animationStage === 'animation with audio' || animationStage === 'animation without audio' ? 'Bomb dropping' :
-                animationStage === 'explosion started' ? 'Explosion in progress' :
-                animationStage === 'explosion complete' ? 'Transition to portfolio' :
+                animationStage === 'animation with audio' || animationStage === 'animation without audio' ? 'Synthwave journey' :
+                animationStage === 'sun bloom finale' ? 'Sun bloom rising' :
+                animationStage === 'sun bloom complete' ? 'Transition to portfolio' :
                 animationStage === 'webgl context lost' ? 'WebGL context lost' :
                 animationStage === 'webgl context restored' ? 'WebGL context restored' :
                 'Unknown'
@@ -279,39 +302,34 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
         </div>
       )}
       
-      <Canvas className="threejs-canvas" camera={{ position: [0, 5, 15], fov: 75 }} style={{ zIndex: 15, position: 'absolute' }}>
+      <Canvas className="threejs-canvas" camera={{ position: [0, 5, 15], fov: 70 }} style={{ zIndex: 15, position: 'absolute' }}>
         <ambientLight intensity={0.8} />
         <pointLight position={[10, 10, 10]} intensity={2} />
         <ContextLossHandler 
           onContextLoss={() => {
-            log('Canvas context loss detected', true);
-            setWebglContextLost(true);
-            
-            // Show a warning in the debug panel
-            setAnimationStage('webgl context lost');
-            
-            // Try to salvage the animation if possible, or fall back to CSS only
+            log('Canvas context loss detected', true)
+            setWebglContextLost(true)
+            setAnimationStage('webgl context lost')
             if (timelineRef.current) {
-              timelineRef.current.pause();
+              timelineRef.current.pause()
             }
           }}
           onContextRestore={() => {
-            log('Canvas context restore detected', true);
-            setWebglContextLost(false);
-            setAnimationStage('webgl context restored');
-            
-            // Resume timeline if possible
+            log('Canvas context restore detected', true)
+            setWebglContextLost(false)
+            setAnimationStage('webgl context restored')
             if (timelineRef.current) {
-              timelineRef.current.play();
+              timelineRef.current.play()
             }
           }}
         />
-        <IntroScene 
-          onSceneLoaded={handleSceneLoaded} 
-          onExplosionComplete={handleExplosionComplete}
-          isPlaying={playingIntro}
-          howl={null}
-        />
+        <Suspense fallback={null}>
+          <IntroScene 
+            onSceneLoaded={handleSceneLoaded} 
+            onExplosionComplete={handleExplosionComplete}
+            isPlaying={playingIntro}
+          />
+        </Suspense>
       </Canvas>
       
       {/* Show WebGL error message if context is lost */}
@@ -343,21 +361,7 @@ const IntroSequence = ({ onComplete, onSkip, audioLoaded, onStartAudio }: IntroS
           <p>Click to begin your journey through the digital horizon</p>
           <button 
             className="play-audio-button" 
-            onClick={() => {
-              log('User clicked to start experience', true);
-              setPlayingIntro(true);
-              setAnimationStage('starting animation');
-              
-              // Start audio using App's audio manager
-              const audioStarted = onStartAudio();
-              if (audioStarted) {
-                log('Audio started with user interaction', true);
-                setAnimationStage('animation with audio');
-              } else {
-                log('Audio blocked or unavailable, continuing without', true);
-                setAnimationStage('animation without audio');
-              }
-            }}
+            onClick={startExperience}
           >
             🚀 Let's. GO!!!!
           </button>

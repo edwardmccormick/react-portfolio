@@ -12,17 +12,24 @@
 body, html {
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
   font-family: 'Montserrat', sans-serif;
 }
 
+body.intro-active,
+html.intro-active {
+  overflow: hidden;
+  height: 100%;
+}
+
 #root {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
   text-align: center;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .intro-container {
