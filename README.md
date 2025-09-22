@@ -2,7 +2,7 @@
 
 # ✨ SYNTHWAVE PORTFOLIO ✨
 
-<img src="https://i.imgur.com/3gaRolU.gif" alt="Synthwave Grid Animation" width="600">
+<img src="image.png" alt="Synthwave Grid Animation" width="600">
 
 ### *Journey through the digital horizon*
 
